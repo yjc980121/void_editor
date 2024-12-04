@@ -98,7 +98,7 @@ jobs:
         run: npm run gulp vscode-win32-x64
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: void-ide-windows-x64
           path: ./VSCode-win32-x64
@@ -188,7 +188,7 @@ jobs:
         run: npm run gulp vscode-linux-x64
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: void-ide-linux-x64
           path: ./VSCode-linux-x64
@@ -278,7 +278,7 @@ jobs:
         run: npm run gulp vscode-linux-arm64
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: void-ide-linux-arm64
           path: ./VSCode-linux-arm64
@@ -359,7 +359,7 @@ jobs:
         run: npm run gulp vscode-darwin-x64
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: void-ide-darwin-x64
           path: ./VSCode-darwin-x64
@@ -440,7 +440,7 @@ jobs:
         run: npm run gulp vscode-darwin-arm64
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: void-ide-darwin-arm64
           path: ./VSCode-darwin-arm64
