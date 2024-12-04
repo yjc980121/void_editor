@@ -1,0 +1,154 @@
+name: Build Release
+
+on:
+  push:
+    branches:
+      - main  # 可以根据需要更改分支名称
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'  # 可以根据需要更改Node.js版本
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build extensions
+        run: |
+          cd extensions/void
+          npm install
+          npm run build
+
+      - name: Build IDE
+        run: |
+          cd ..
+          yarn
+          npm run watch
+
+      - name: Package IDE
+        run: |
+          cd ..
+          npm run gulp vscode-win32-x64  # 根据实际打包命令调整
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: void-ide-windows
+          path: ./VSCode-win32-x64  # 根据实际输出路径调整
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'  # 可以根据需要更改Node.js版本
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build extensions
+        run: |
+          cd extensions/void
+          npm install
+          npm run build
+
+      - name: Build IDE
+        run: |
+          cd ..
+          yarn
+          npm run watch
+
+      - name: Package IDE
+        run: |
+          cd ..
+          npm run gulp vscode-linux-x64  # 根据实际打包命令调整
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: void-ide-linux
+          path: ./VSCode-linux-x64  # 根据实际输出路径调整
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'  # 可以根据需要更改Node.js版本
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build extensions
+        run: |
+          cd extensions/void
+          npm install
+          npm run build
+
+      - name: Build IDE
+        run: |
+          cd ..
+          yarn
+          npm run watch
+
+      - name: Package IDE
+        run: |
+          cd ..
+          npm run gulp vscode-darwin-x64  # 根据实际打包命令调整
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: void-ide-macos
+          path: ./VSCode-darwin-x64  # 根据实际输出路径调整
+
+  download:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: void-ide-windows
+          path: ./downloaded-artifact/windows
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: void-ide-linux
+          path: ./downloaded-artifact/linux
+
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: void-ide-macos
+          path: ./downloaded-artifact/macos
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./downloaded-artifact/windows/*
+            ./downloaded-artifact/linux/*
+            ./downloaded-artifact/macos/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
