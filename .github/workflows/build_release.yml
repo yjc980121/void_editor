@@ -1,5 +1,6 @@
 name: CI
 
+
 on:
   workflow_dispatch:
   push:
@@ -95,13 +96,14 @@ jobs:
         run: .\scripts\test-remote-integration.bat
 
       - name: Package IDE
-        run: npm run gulp vscode-win32-x64
+        run: npm run gulp vscode-windows-x64
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: void-ide-windows-x64
           path: ./VSCode-win32-x64
+
 
   linux-x64:
     name: Linux x64
@@ -112,6 +114,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # TODO: rename azure-pipelines/linux/xvfb.init to github-actions
       - name: Setup Build Environment
         run: |
           sudo apt-get update
@@ -193,98 +196,9 @@ jobs:
           name: void-ide-linux-x64
           path: ./VSCode-linux-x64
 
-  linux-arm64:
-    name: Linux ARM64
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    env:
-      GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Build Environment
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libxkbfile-dev pkg-config libkrb5-dev libxss1 dbus xvfb libgtk-3-0 libgbm1
-          sudo cp build/azure-pipelines/linux/xvfb.init /etc/init.d/xvfb
-          sudo chmod +x /etc/init.d/xvfb
-          sudo update-rc.d xvfb defaults
-          sudo service xvfb start
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-
-      - name: Compute node modules cache key
-        id: nodeModulesCacheKey
-        run: echo "value=$(node build/azure-pipelines/common/computeNodeModulesCacheKey.js)" >> $GITHUB_OUTPUT
-      - name: Cache node modules
-        id: cacheNodeModules
-        uses: actions/cache@v4
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-cacheNodeModulesLinux-${{ steps.nodeModulesCacheKey.outputs.value }}
-      - name: Get npm cache directory path
-        id: npmCacheDirPath
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
-      - name: Cache npm directory
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.npmCacheDirPath.outputs.dir }}
-          key: ${{ runner.os }}-npmCacheDir-${{ steps.nodeModulesCacheKey.outputs.value }}
-          restore-keys: ${{ runner.os }}-npmCacheDir-
-      - name: Execute npm
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
-        run: npm ci
-
-      - name: Compile and Download
-        run: npm exec -- npm-run-all -lp compile "electron arm64" playwright-install download-builtin-extensions
-
-      - name: Compile Integration Tests
-        run: npm run compile
-        working-directory: test/integration/browser
-
-      - name: Run Unit Tests (Electron)
-        id: electron-unit-tests
-        run: DISPLAY=:10 ./scripts/test.sh
-
-      - name: Run Unit Tests (node.js)
-        id: nodejs-unit-tests
-        run: npm run test-node
-
-      - name: Run Unit Tests (Browser, Chromium)
-        id: browser-unit-tests
-        run: DISPLAY=:10 npm run test-browser-no-install -- --browser chromium
-
-      - name: Run Integration Tests (Electron)
-        id: electron-integration-tests
-        run: DISPLAY=:10 ./scripts/test-integration.sh
-
-      - name: Run Integration Tests (Browser, Chromium)
-        id: browser-integration-tests
-        run: DISPLAY=:10 ./scripts/test-web-integration.sh --browser chromium
-
-      - name: Run Integration Tests (Remote)
-        id: electron-remote-integration-tests
-        timeout-minutes: 15
-        run: DISPLAY=:10 ./scripts/test-remote-integration.sh
-
-      - name: Package IDE
-        run: npm run gulp vscode-linux-arm64
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: void-ide-linux-arm64
-          path: ./VSCode-linux-arm64
-
+          
   darwin-x64:
-    name: macOS x64
+    name: macOS
     runs-on: macos-latest
     timeout-minutes: 40
     env:
@@ -330,6 +244,7 @@ jobs:
         run: npm run compile
         working-directory: test/integration/browser
 
+      # This is required for SecretStorage unittests
       - name: Create temporary keychain
         run: |
           security create-keychain -p pwd $RUNNER_TEMP/buildagent.keychain
@@ -357,128 +272,35 @@ jobs:
 
       - name: Package IDE
         run: npm run gulp vscode-darwin-x64
-
+        
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: void-ide-darwin-x64
           path: ./VSCode-darwin-x64
-
-  darwin-arm64:
-    name: macOS ARM64
-    runs-on: macos-latest
-    timeout-minutes: 40
-    env:
-      GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-
-      - name: Compute node modules cache key
-        id: nodeModulesCacheKey
-        run: echo "value=$(node build/azure-pipelines/common/computeNodeModulesCacheKey.js)" >> $GITHUB_OUTPUT
-      - name: Cache node modules
-        id: cacheNodeModules
-        uses: actions/cache@v4
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-cacheNodeModulesMacOS-${{ steps.nodeModulesCacheKey.outputs.value }}
-      - name: Get npm cache directory path
-        id: npmCacheDirPath
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
-      - name: Cache npm directory
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.npmCacheDirPath.outputs.dir }}
-          key: ${{ runner.os }}-npmCacheDir-${{ steps.nodeModulesCacheKey.outputs.value }}
-          restore-keys: ${{ runner.os }}-npmCacheDir-
-      - name: Execute npm
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
-        run: npm ci
-
-      - name: Compile and Download
-        run: npm exec -- npm-run-all -lp compile "electron arm64" playwright-install download-builtin-extensions
-
-      - name: Compile Integration Tests
-        run: npm run compile
-        working-directory: test/integration/browser
-
-      - name: Create temporary keychain
-        run: |
-          security create-keychain -p pwd $RUNNER_TEMP/buildagent.keychain
-          security default-keychain -s $RUNNER_TEMP/buildagent.keychain
-          security unlock-keychain -p pwd $RUNNER_TEMP/buildagent.keychain
-
-      - name: Run Unit Tests (Electron)
-        run: DISPLAY=:10 ./scripts/test.sh
-
-      - name: Run Unit Tests (node.js)
-        run: npm run test-node
-
-      - name: Run Unit Tests (Browser, Chromium)
-        run: DISPLAY=:10 npm run test-browser-no-install -- --browser chromium
-
-      - name: Run Integration Tests (Electron)
-        run: DISPLAY=:10 ./scripts/test-integration.sh
-
-      - name: Run Integration Tests (Browser, Webkit)
-        run: DISPLAY=:10 ./scripts/test-web-integration.sh --browser webkit
-
-      - name: Run Integration Tests (Remote)
-        timeout-minutes: 15
-        run: DISPLAY=:10 ./scripts/test-remote-integration.sh
-
-      - name: Package IDE
-        run: npm run gulp vscode-darwin-arm64
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: void-ide-darwin-arm64
-          path: ./VSCode-darwin-arm64
-
+  
   download:
-    needs: [windows-x64, linux-x64, linux-arm64, darwin-x64, darwin-arm64]
+    needs: [windows-x64, linux-x64,  darwin-x64]
     runs-on: ubuntu-latest
 
     steps:
       - name: Download Windows x64 Artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: void-ide-windows-x64
           path: ./downloaded-artifact/windows-x64
 
       - name: Download Linux x64 Artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: void-ide-linux-x64
           path: ./downloaded-artifact/linux-x64
 
-      - name: Download Linux ARM64 Artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: void-ide-linux-arm64
-          path: ./downloaded-artifact/linux-arm64
-
       - name: Download macOS x64 Artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: void-ide-darwin-x64
           path: ./downloaded-artifact/darwin-x64
-
-      - name: Download macOS ARM64 Artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: void-ide-darwin-arm64
-          path: ./downloaded-artifact/darwin-arm64
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
@@ -486,8 +308,7 @@ jobs:
           files: |
             ./downloaded-artifact/windows-x64/*
             ./downloaded-artifact/linux-x64/*
-            ./downloaded-artifact/linux-arm64/*
             ./downloaded-artifact/darwin-x64/*
-            ./downloaded-artifact/darwin-arm64/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
